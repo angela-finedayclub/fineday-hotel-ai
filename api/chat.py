@@ -1,25 +1,25 @@
-# api/chat.py (這是 Vercel Serverless Functions 的標準寫法)
+# api/chat.py
 import json
 import os
 from openai import OpenAI
 
-# Vercel 期望在檔案中找到一個名為 'handler' 或 'app' 的可呼叫物件
+# Vercel Serverless Function 的入口點必須是一個名為 'handler' 或 'app' 的函式
 def handler(request):
     try:
-        # 1. 關鍵檢查：延遲/安全初始化
+        # 安全地獲取 API Key
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
              return {
                 "statusCode": 500,
                 "headers": {"Content-Type": "application/json"},
-                "body": json.dumps({"error": "Configuration Error: OPENAI_API_KEY not set."})
+                "body": json.dumps({"error": "Configuration Error: OPENAI_API_KEY not set in Vercel Environment Variables."})
             }
         
-        # 只有在函式被呼叫時才初始化 client
+        # 延遲初始化 client
         client = OpenAI(api_key=api_key)
         
-        # 2. 獲取請求數據
-        # Vercel 請求物件處理
+        # 處理 POST 請求的 JSON 數據
+        # Vercel 的 request 物件可以直接獲取 body
         body = json.loads(request.get_data())
         user_message = body.get("message", "")
 
@@ -30,7 +30,7 @@ def handler(request):
                 "body": json.dumps({"error": "No message provided"})
             }
 
-        # 3. 呼叫 OpenAI API
+        # 呼叫 OpenAI API
         completion = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
@@ -40,7 +40,7 @@ def handler(request):
         )
         reply = completion.choices[0].message.content.strip()
 
-        # 4. 回傳 Vercel 格式
+        # 回傳 Vercel 格式的 JSON 響應
         return {
             "statusCode": 200,
             "headers": {"Content-Type": "application/json"},
@@ -48,7 +48,7 @@ def handler(request):
         }
 
     except Exception as e:
-        # 確保任何錯誤都能回傳詳細信息
+        # 捕捉並回傳所有錯誤細節
         return {
             "statusCode": 500,
             "headers": {"Content-Type": "application/json"},
